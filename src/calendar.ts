@@ -5,7 +5,16 @@
  */
 
 import ICAL from "ical.js";
-import { XMLParser } from "fast-xml-parser";
+import {
+  collectionPath,
+  createCalendarCollection,
+  getCalendarData,
+  getEtag,
+  listCalendarCollections,
+  type MakeRequest,
+  queryComponents,
+  resourcePath,
+} from "./caldav.ts";
 
 /** A CalDAV calendar. */
 export type Calendar = {
@@ -27,18 +36,6 @@ export type CalendarEvent = {
   end?: Date;
   allDay: boolean;
 };
-
-const xmlParser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
-
-const asArray = <T>(value: T | T[] | undefined): T[] =>
-  value === undefined ? [] : Array.isArray(value) ? value : [value];
-
-const escapeXml = (value: string): string =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 
 const eventFromIcs = (
   url: string,
@@ -94,66 +91,31 @@ const eventToIcs = (data: {
 
 /** Client for managing calendars and events via CalDAV. */
 export class UNBCalendar {
-  makeRequest: (
-    method: string,
-    path: string,
-    body?: BodyInit,
-    headers?: Record<string, string>,
-  ) => Promise<Response>;
+  makeRequest: MakeRequest;
   username: string;
 
-  constructor(
-    makeRequest: (
-      method: string,
-      path: string,
-      body?: BodyInit,
-      headers?: Record<string, string>,
-    ) => Promise<Response>,
-    username: string,
-  ) {
+  constructor(makeRequest: MakeRequest, username: string) {
     this.makeRequest = makeRequest;
     this.username = username;
   }
 
-  private calendarHomePath(): string {
-    return `/remote.php/dav/calendars/${encodeURIComponent(this.username)}/`;
-  }
-
-  private calendarPath(id: string): string {
-    return `${this.calendarHomePath()}${encodeURIComponent(id)}/`;
+  private path(id: string): string {
+    return collectionPath(this.username, id);
   }
 
   private eventPath(calendarId: string, uid: string): string {
-    return `${this.calendarPath(calendarId)}${encodeURIComponent(uid)}.ics`;
+    return resourcePath(this.username, calendarId, uid);
   }
 
   /** Lists the bot user's calendars. */
   async getCalendars(): Promise<Calendar[]> {
-    const response = await this.makeRequest(
-      "PROPFIND",
-      this.calendarHomePath(),
-      `<?xml version="1.0" encoding="utf-8" ?>
-<propfind xmlns="DAV:" xmlns:ic="http://apple.com/ns/ical/">
-  <prop>
-    <resourcetype />
-    <displayname />
-    <ic:calendar-color />
-  </prop>
-</propfind>`,
-      { "content-type": "application/xml; charset=utf-8", Depth: "1" },
+    const collections = await listCalendarCollections(
+      this.makeRequest,
+      this.username,
     );
-    const parsed = xmlParser.parse(await response.text());
-    const responses = asArray(parsed.multistatus?.response);
-    return responses
-      .filter((r) => r.propstat?.prop?.resourcetype?.calendar !== undefined)
-      .map((r) => ({
-        id: decodeURIComponent(
-          String(r.href).replace(/\/$/, "").split("/").pop() ?? "",
-        ),
-        url: r.href,
-        displayName: r.propstat?.prop?.displayname ?? "",
-        color: r.propstat?.prop?.["calendar-color"],
-      }));
+    return collections
+      .filter((c) => c.supportsEvents)
+      .map(({ id, url, displayName, color }) => ({ id, url, displayName, color }));
   }
 
   /** Creates a new calendar. */
@@ -162,58 +124,32 @@ export class UNBCalendar {
     displayName: string,
     color?: string,
   ): Promise<void> {
-    const response = await this.makeRequest(
-      "MKCALENDAR",
-      this.calendarPath(id),
-      `<?xml version="1.0" encoding="utf-8" ?>
-<mkcalendar xmlns="DAV:" xmlns:ic="http://apple.com/ns/ical/">
-  <set>
-    <prop>
-      <displayname>${escapeXml(displayName)}</displayname>
-      ${color ? `<ic:calendar-color>${escapeXml(color)}</ic:calendar-color>` : ""}
-    </prop>
-  </set>
-</mkcalendar>`,
-      { "content-type": "application/xml; charset=utf-8" },
+    await createCalendarCollection(
+      this.makeRequest,
+      this.username,
+      id,
+      displayName,
+      color,
     );
-    if (!response.ok) {
-      throw new Error(
-        `Failed to create calendar "${id}" (status ${response.status})`,
-      );
-    }
   }
 
   /** Deletes a calendar and all its events. */
   async deleteCalendar(id: string): Promise<void> {
-    await this.makeRequest("DELETE", this.calendarPath(id));
+    await this.makeRequest("DELETE", this.path(id));
   }
 
   /** Lists the events in a calendar. */
   async getEvents(calendarId: string): Promise<CalendarEvent[]> {
-    const response = await this.makeRequest(
-      "REPORT",
-      this.calendarPath(calendarId),
-      `<?xml version="1.0" encoding="utf-8" ?>
-<calendar-query xmlns="urn:ietf:params:xml:ns:caldav" xmlns:d="DAV:">
-  <d:prop>
-    <d:getetag />
-    <calendar-data />
-  </d:prop>
-  <filter>
-    <comp-filter name="VCALENDAR">
-      <comp-filter name="VEVENT" />
-    </comp-filter>
-  </filter>
-</calendar-query>`,
-      { "content-type": "application/xml; charset=utf-8", Depth: "1" },
+    const responses = await queryComponents(
+      this.makeRequest,
+      this.path(calendarId),
+      "VEVENT",
     );
-    const parsed = xmlParser.parse(await response.text());
-    const responses = asArray(parsed.multistatus?.response);
     return responses
       .map((r) => {
-        const ics = r.propstat?.prop?.["calendar-data"];
+        const ics = getCalendarData(r);
         if (!ics) return undefined;
-        return eventFromIcs(r.href, r.propstat?.prop?.getetag, String(ics));
+        return eventFromIcs(r.href, getEtag(r), ics);
       })
       .filter((event): event is CalendarEvent => event !== undefined);
   }

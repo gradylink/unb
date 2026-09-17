@@ -20,8 +20,9 @@
 import { UNBCalendar } from "./calendar.ts";
 import { UNBFiles } from "./files.ts";
 import { UNBTalk } from "./talk.ts";
+import { UNBTasks } from "./tasks.ts";
 
-/** A bot that authenticates against a Nextcloud instance and can talk to its Talk, Files, and Calendar APIs. */
+/** A bot that authenticates against a Nextcloud instance and can talk to its Talk, Files, Calendar, and Tasks APIs. */
 export class UniversalNextcloudBot {
   url: string;
   username: string;
@@ -29,6 +30,7 @@ export class UniversalNextcloudBot {
   talk: UNBTalk;
   files: UNBFiles;
   calendar: UNBCalendar;
+  tasks: UNBTasks;
 
   constructor(url: string, username: string, password: string) {
     this.url = url;
@@ -38,6 +40,7 @@ export class UniversalNextcloudBot {
     this.talk = new UNBTalk(this.makeRequest.bind(this));
     this.files = new UNBFiles(this.makeRequest.bind(this), this.username);
     this.calendar = new UNBCalendar(this.makeRequest.bind(this), this.username);
+    this.tasks = new UNBTasks(this.makeRequest.bind(this), this.username);
   }
 
   /** Makes an authenticated request against the Nextcloud instance. */
