@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./talk": "./src/talk.ts",
-    "./files": "./src/files.ts"
+    "./files": "./src/files.ts",
+    "./calendar": "./src/calendar.ts"
   }
 }

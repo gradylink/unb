@@ -8,5 +8,9 @@
   "peerDependencies": {
     "typescript": "^5"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "fast-xml-parser": "^5.11.1",
+    "ical.js": "^2.2.1"
+  }
 }
