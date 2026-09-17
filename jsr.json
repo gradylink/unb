@@ -1,0 +1,10 @@
+{
+  "$schema": "https://jsr.io/schema/config-file.v1.json",
+  "name": "@gradylink/unb",
+  "version": "0.7.7",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./talk": "./src/talk.ts"
+  }
+}
