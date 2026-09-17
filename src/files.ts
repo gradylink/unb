@@ -4,8 +4,19 @@
  * @module files
  */
 
-export type ShareType = 0 | 1 | 3 | 4 | 6 | 7 | 10;
+/** Who or what a {@link Share} is shared with. */
+export enum ShareType {
+  User = 0,
+  Group = 1,
+  PublicLink = 3,
+  Email = 4,
+  FederatedCloudShare = 6,
+  Circle = 7,
+  /** Shared into a Talk conversation. */
+  Room = 10,
+}
 
+/** A share of a file or folder. */
 export type Share = {
   id: number;
   shareType: ShareType;
@@ -25,6 +36,7 @@ export type Share = {
   hideDownload?: boolean;
 };
 
+/** Client for managing files, folders, and shares via WebDAV and the Files Sharing API. */
 export class UNBFiles {
   makeRequest: (
     method: string,
@@ -174,6 +186,7 @@ export class UNBFiles {
     ).ocs.data;
   }
 
+  /** Fetches a single share by id. */
   async getShare(id: number): Promise<Share> {
     return (
       await (
@@ -185,6 +198,7 @@ export class UNBFiles {
     ).ocs.data;
   }
 
+  /** Updates a share's permissions, password, expiration, note, label, or download visibility. */
   async updateShare(
     id: number,
     data: {
@@ -207,6 +221,7 @@ export class UNBFiles {
     ).ocs.data;
   }
 
+  /** Deletes a share. */
   async deleteShare(id: number): Promise<void> {
     await this.makeRequest(
       "DELETE",

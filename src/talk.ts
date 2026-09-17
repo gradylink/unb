@@ -6,14 +6,93 @@
 
 import type { RichObjectParam } from "./types.ts";
 
+/** The kind of conversation a {@link Room} represents. */
+export enum ConversationType {
+  OneToOne = 1,
+  Group = 2,
+  Public = 3,
+  Changelog = 4,
+  /** @deprecated Replaced by {@link ConversationType.OneToOne} conversations that keep history. */
+  FormerOneToOne = 5,
+  NoteToSelf = 6,
+}
+
+/** A participant's role within a conversation. */
+export enum ParticipantType {
+  Owner = 1,
+  Moderator = 2,
+  User = 3,
+  Guest = 4,
+  UserSelfJoined = 5,
+  GuestModerator = 6,
+}
+
+/** How often a participant is notified about a conversation. */
+export enum NotificationLevel {
+  Default = 0,
+  Always = 1,
+  Mention = 2,
+  Never = 3,
+}
+
+/** Whether non-moderators are held in the lobby before a call starts. */
+export enum LobbyState {
+  NoLobby = 0,
+  NonModeratorsRestricted = 1,
+}
+
+/** Whether dial-in via SIP is available for a conversation. */
+export enum SipEnabled {
+  Disabled = 0,
+  Enabled = 1,
+  EnabledWithoutPin = 2,
+}
+
+/** The current call recording state of a conversation. */
+export enum CallRecordingStatus {
+  None = 0,
+  Video = 1,
+  Audio = 2,
+  VideoStopping = 3,
+  AudioStopping = 4,
+  Failed = 5,
+}
+
+/** Whether participants must consent before a call recording starts. */
+export enum RecordingConsent {
+  Off = 0,
+  Required = 1,
+}
+
+/** Who is allowed to ping the whole conversation. */
+export enum MentionPermissions {
+  Everyone = 0,
+  ModeratorsOnly = 1,
+}
+
+/** How breakout rooms are assigned for a conversation. */
+export enum BreakoutRoomMode {
+  NotConfigured = 0,
+  Automatic = 1,
+  Manual = 2,
+  Free = 3,
+}
+
+/** Whether breakout rooms are currently open. */
+export enum BreakoutRoomStatus {
+  Stopped = 0,
+  Started = 1,
+}
+
+/** A Nextcloud Talk conversation. */
 export type Room = {
   id: number;
   token: string;
-  type: 1 | 2 | 3 | 4 | 5 | 6;
+  type: ConversationType;
   name: string;
   displayName: string;
   description: string;
-  participantType: 1 | 2 | 3 | 4 | 5 | 6;
+  participantType: ParticipantType;
   attendeeId: number;
   attendeePin: string;
   actorType:
@@ -42,10 +121,10 @@ export type Room = {
   canLeaveConversation: boolean;
   lastActivity: number;
   isFavorite: boolean;
-  notificationLevel: 0 | 1 | 2 | 3;
-  lobbyState: 0 | 1;
+  notificationLevel: NotificationLevel;
+  lobbyState: LobbyState;
   lobbyTimer: number;
-  sipEnabled: 0 | 1 | 2;
+  sipEnabled: SipEnabled;
   canEnableSIP: number;
   unreadMessages: number;
   unreadMention: boolean;
@@ -62,8 +141,8 @@ export type Room = {
     | "event"
     | "extended_conversation";
   objectId: string;
-  breakoutRoomMode: 0 | 1 | 2 | 3;
-  breakoutRoomStatus: 0 | 1;
+  breakoutRoomMode: BreakoutRoomMode;
+  breakoutRoomStatus: BreakoutRoomStatus;
   status: string;
   statusIcon?: string;
   statusMessage?: string;
@@ -71,12 +150,13 @@ export type Room = {
   avatarVersion: string;
   isCustomAvatar: boolean;
   callStartTime: number;
-  callRecording: 0 | 1 | 2 | 3 | 4 | 5;
-  recordingConsent: 0 | 1;
-  mentionPermissions: 0 | 1;
+  callRecording: CallRecordingStatus;
+  recordingConsent: RecordingConsent;
+  mentionPermissions: MentionPermissions;
   isArchived: boolean;
 };
 
+/** A single message within a Talk conversation. */
 export type Message = {
   id: number;
   token: string;
@@ -114,6 +194,7 @@ export type Message = {
   silent?: boolean;
 };
 
+/** A participant in a Talk conversation. */
 export type Participant = {
   attendeeId: number;
   actorType:
@@ -125,7 +206,7 @@ export type Participant = {
     | "emails";
   actorId: string;
   displayName: string;
-  participantType: 1 | 2 | 3 | 4 | 5 | 6;
+  participantType: ParticipantType;
   lastPing: number;
   inCall: number;
   permissions: number;
@@ -139,6 +220,13 @@ export type Participant = {
   callId?: string;
 };
 
+/** Whether a poll's results are visible before it closes. */
+export enum PollResultMode {
+  Hidden = 0,
+  Public = 1,
+}
+
+/** A file rich object parameter attached to a {@link Message}. */
 export type FileAttachment = RichObjectParam & {
   mimetype: string;
   width?: number;
@@ -146,6 +234,7 @@ export type FileAttachment = RichObjectParam & {
   size?: number;
 };
 
+/** Client for the Nextcloud Talk (Spreed) API. */
 export class UNBTalk {
   makeRequest: (
     method: string,
@@ -184,6 +273,7 @@ export class UNBTalk {
     );
   }
 
+  /** Sends a chat message to a conversation. */
   async sendMessage(token: string, msg: string, replyId?: number) {
     await this.makeRequest(
       "POST",
@@ -212,6 +302,7 @@ export class UNBTalk {
     return [];
   }
 
+  /** Deletes a chat message. */
   async deleteMessage(token: string, id: number) {
     await this.makeRequest(
       "DELETE",
@@ -219,6 +310,7 @@ export class UNBTalk {
     );
   }
 
+  /** Edits the text of an existing chat message. */
   async editMessage(token: string, id: number, newMessage: string) {
     await this.makeRequest(
       "PUT",
@@ -227,6 +319,7 @@ export class UNBTalk {
     );
   }
 
+  /** Lists the participants of a conversation. */
   async getParticipants(token: string): Promise<Participant[]> {
     return (
       await (
@@ -238,6 +331,7 @@ export class UNBTalk {
     ).ocs.data;
   }
 
+  /** Marks the bot's session as active in a conversation. */
   async setActive(token: string) {
     await this.makeRequest(
       "POST",
@@ -245,6 +339,7 @@ export class UNBTalk {
     );
   }
 
+  /** Sets, adds, or removes permissions for a conversation attendee. */
   async setPerms(
     token: string,
     data: {
@@ -260,6 +355,7 @@ export class UNBTalk {
     );
   }
 
+  /** Adds a user as a participant of a conversation. */
   async addParticipant(token: string, user: string) {
     await this.makeRequest(
       "POST",
@@ -268,6 +364,7 @@ export class UNBTalk {
     );
   }
 
+  /** Demotes a moderator to a regular participant. */
   async demoteMod(token: string, attendeeId: number) {
     await this.makeRequest(
       "DELETE",
@@ -275,6 +372,7 @@ export class UNBTalk {
     );
   }
 
+  /** Removes an attendee from a conversation. */
   async removeAttendee(token: string, attendeeId: number) {
     await this.makeRequest(
       "DELETE",
@@ -282,12 +380,13 @@ export class UNBTalk {
     );
   }
 
+  /** Creates a poll in a conversation and returns its id. */
   async createPoll(
     token: string,
     data: {
       question: string;
       options: string[];
-      resultMode: 0 | 1;
+      resultMode: PollResultMode;
       maxVotes: number;
       draft: boolean;
     },
@@ -303,6 +402,7 @@ export class UNBTalk {
     ).ocs.data.id;
   }
 
+  /** Closes a poll, preventing further votes. */
   async closePoll(token: string, id: number) {
     await this.makeRequest(
       "DELETE",

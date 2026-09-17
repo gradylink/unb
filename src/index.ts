@@ -20,6 +20,7 @@
 import { UNBFiles } from "./files.ts";
 import { UNBTalk } from "./talk.ts";
 
+/** A bot that authenticates against a Nextcloud instance and can talk to its Talk and Files APIs. */
 export class UniversalNextcloudBot {
   url: string;
   username: string;
@@ -36,6 +37,7 @@ export class UniversalNextcloudBot {
     this.files = new UNBFiles(this.makeRequest.bind(this), this.username);
   }
 
+  /** Makes an authenticated request against the Nextcloud instance. */
   async makeRequest(
     method: string,
     path: string,
