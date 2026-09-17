@@ -139,6 +139,13 @@ export type Participant = {
   callId?: string;
 };
 
+export type FileAttachment = RichObjectParam & {
+  mimetype: string;
+  width?: number;
+  height?: number;
+  size?: number;
+};
+
 export class UNBTalk {
   makeRequest: (
     method: string,
@@ -301,5 +308,35 @@ export class UNBTalk {
       "DELETE",
       `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${id}?format=json`,
     );
+  }
+
+  /** Extracts the file attachment from a message's rich object parameters, if any. */
+  getAttachment(
+    messageParameters: Record<string, RichObjectParam>,
+  ): FileAttachment | undefined {
+    const file = messageParameters.file as FileAttachment | undefined;
+    return file?.type === "file" ? file : undefined;
+  }
+
+  /** Same as {@link getAttachment}, but only returns image attachments. */
+  getImageAttachment(
+    messageParameters: Record<string, RichObjectParam>,
+  ): FileAttachment | undefined {
+    const file = this.getAttachment(messageParameters);
+    return file?.mimetype.startsWith("image/") ? file : undefined;
+  }
+
+  /** Fetches a preview of a file attachment and returns it as a data URL. */
+  async fetchPreviewDataUrl(file: FileAttachment): Promise<string> {
+    const width = file.width ?? 512;
+    const height = file.height ?? 512;
+    const response = await this.makeRequest(
+      "GET",
+      `/core/preview?fileId=${file.id}&x=${width}&y=${height}`,
+    );
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return `data:${file.mimetype};base64,${
+      Buffer.from(bytes).toString("base64")
+    }`;
   }
 }

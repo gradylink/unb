@@ -17,6 +17,7 @@
  * @module unb
  */
 
+import { UNBFiles } from "./files.ts";
 import { UNBTalk } from "./talk.ts";
 
 export class UniversalNextcloudBot {
@@ -24,6 +25,7 @@ export class UniversalNextcloudBot {
   username: string;
   password: string;
   talk: UNBTalk;
+  files: UNBFiles;
 
   constructor(url: string, username: string, password: string) {
     this.url = url;
@@ -31,12 +33,14 @@ export class UniversalNextcloudBot {
     this.password = password;
 
     this.talk = new UNBTalk(this.makeRequest.bind(this));
+    this.files = new UNBFiles(this.makeRequest.bind(this), this.username);
   }
 
   async makeRequest(
     method: string,
     path: string,
-    body?: string,
+    body?: BodyInit,
+    headers?: Record<string, string>,
   ): Promise<Response> {
     return await fetch(this.url + path, {
       method,
@@ -48,6 +52,7 @@ export class UniversalNextcloudBot {
         "content-type": "application/json",
         "OCS-APIRequest": "true",
         USER_AGENT: "ts-unb",
+        ...headers,
       },
     });
   }
