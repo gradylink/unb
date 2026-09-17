@@ -11,10 +11,10 @@ import {
   getCalendarData,
   getEtag,
   listCalendarCollections,
-  type MakeRequest,
   queryComponents,
   resourcePath,
 } from "./caldav.ts";
+import type { MakeRequest } from "./types.ts";
 
 /** A CalDAV task list (a calendar collection that supports `VTODO`). */
 export type TaskList = {
@@ -309,7 +309,7 @@ export class UNBTasks {
   }
 
   /** Marks a task as completed. */
-  async completeTask(taskListId: string, uid: string): Promise<Task> {
+  completeTask(taskListId: string, uid: string): Promise<Task> {
     return this.updateTask(taskListId, uid, { status: "COMPLETED" });
   }
 

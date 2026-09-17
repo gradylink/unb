@@ -8,6 +8,7 @@
     "./talk": "./src/talk.ts",
     "./files": "./src/files.ts",
     "./calendar": "./src/calendar.ts",
-    "./tasks": "./src/tasks.ts"
+    "./tasks": "./src/tasks.ts",
+    "./notes": "./src/notes.ts"
   }
 }

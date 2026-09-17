@@ -11,10 +11,10 @@ import {
   getCalendarData,
   getEtag,
   listCalendarCollections,
-  type MakeRequest,
   queryComponents,
   resourcePath,
 } from "./caldav.ts";
+import type { MakeRequest } from "./types.ts";
 
 /** A CalDAV calendar. */
 export type Calendar = {

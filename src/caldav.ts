@@ -1,11 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-
-export type MakeRequest = (
-  method: string,
-  path: string,
-  body?: BodyInit,
-  headers?: Record<string, string>,
-) => Promise<Response>;
+import type { MakeRequest } from "./types.ts";
 
 export const xmlParser = new XMLParser({
   ignoreAttributes: false,

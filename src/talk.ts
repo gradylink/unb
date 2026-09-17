@@ -4,7 +4,7 @@
  * @module talk
  */
 
-import type { RichObjectParam } from "./types.ts";
+import type { MakeRequest, RichObjectParam } from "./types.ts";
 
 /** The kind of conversation a {@link Room} represents. */
 export enum ConversationType {
@@ -236,20 +236,10 @@ export type FileAttachment = RichObjectParam & {
 
 /** Client for the Nextcloud Talk (Spreed) API. */
 export class UNBTalk {
-  makeRequest: (
-    method: string,
-    path: string,
-    body?: string,
-  ) => Promise<Response>;
+  makeRequest: MakeRequest;
   rooms: { [token: string]: Room } = {};
 
-  constructor(
-    makeRequest: (
-      method: string,
-      path: string,
-      body?: string,
-    ) => Promise<Response>,
-  ) {
+  constructor(makeRequest: MakeRequest) {
     this.makeRequest = makeRequest;
   }
 

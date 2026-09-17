@@ -19,10 +19,11 @@
 
 import { UNBCalendar } from "./calendar.ts";
 import { UNBFiles } from "./files.ts";
+import { UNBNotes } from "./notes.ts";
 import { UNBTalk } from "./talk.ts";
 import { UNBTasks } from "./tasks.ts";
 
-/** A bot that authenticates against a Nextcloud instance and can talk to its Talk, Files, Calendar, and Tasks APIs. */
+/** A bot that authenticates against a Nextcloud instance and can talk to its Talk, Files, Calendar, Tasks, and Notes APIs. */
 export class UniversalNextcloudBot {
   url: string;
   username: string;
@@ -31,6 +32,7 @@ export class UniversalNextcloudBot {
   files: UNBFiles;
   calendar: UNBCalendar;
   tasks: UNBTasks;
+  notes: UNBNotes;
 
   constructor(url: string, username: string, password: string) {
     this.url = url;
@@ -41,6 +43,7 @@ export class UniversalNextcloudBot {
     this.files = new UNBFiles(this.makeRequest.bind(this), this.username);
     this.calendar = new UNBCalendar(this.makeRequest.bind(this), this.username);
     this.tasks = new UNBTasks(this.makeRequest.bind(this), this.username);
+    this.notes = new UNBNotes(this.makeRequest.bind(this));
   }
 
   /** Makes an authenticated request against the Nextcloud instance. */
@@ -50,6 +53,7 @@ export class UniversalNextcloudBot {
     body?: BodyInit,
     headers?: Record<string, string>,
   ): Promise<Response> {
+    const isFormData = body instanceof FormData;
     return await fetch(this.url + path, {
       method,
       body,
@@ -57,7 +61,7 @@ export class UniversalNextcloudBot {
         Authorization: `Basic ${
           Buffer.from(`${this.username}:${this.password}`).toString("base64")
         }`,
-        "content-type": "application/json",
+        ...(isFormData ? {} : { "content-type": "application/json" }),
         "OCS-APIRequest": "true",
         USER_AGENT: "ts-unb",
         ...headers,

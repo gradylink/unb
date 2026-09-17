@@ -4,6 +4,8 @@
  * @module files
  */
 
+import type { MakeRequest } from "./types.ts";
+
 /** Who or what a {@link Share} is shared with. */
 export enum ShareType {
   User = 0,
@@ -38,23 +40,10 @@ export type Share = {
 
 /** Client for managing files, folders, and shares via WebDAV and the Files Sharing API. */
 export class UNBFiles {
-  makeRequest: (
-    method: string,
-    path: string,
-    body?: BodyInit,
-    headers?: Record<string, string>,
-  ) => Promise<Response>;
+  makeRequest: MakeRequest;
   username: string;
 
-  constructor(
-    makeRequest: (
-      method: string,
-      path: string,
-      body?: BodyInit,
-      headers?: Record<string, string>,
-    ) => Promise<Response>,
-    username: string,
-  ) {
+  constructor(makeRequest: MakeRequest, username: string) {
     this.makeRequest = makeRequest;
     this.username = username;
   }
