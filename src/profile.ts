@@ -136,6 +136,8 @@ export type Account = {
   headlineScope?: AccountScope;
   biography?: string;
   biographyScope?: AccountScope;
+  birthdate?: string;
+  birthdateScope?: AccountScope;
   profile_enabled?: string;
   profile_enabledScope?: AccountScope;
   pronouns?: string;
