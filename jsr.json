@@ -10,6 +10,7 @@
     "./calendar": "./src/calendar.ts",
     "./tasks": "./src/tasks.ts",
     "./notes": "./src/notes.ts",
-    "./forms": "./src/forms.ts"
+    "./forms": "./src/forms.ts",
+    "./profile": "./src/profile.ts"
   }
 }
