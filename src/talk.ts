@@ -6,6 +6,16 @@
 
 import type { MakeRequest, RichObjectParam } from "./types.ts";
 
+/** The kind of actor behind an attendee, message, or vote. */
+export enum ActorType {
+  User = "users",
+  FederatedUser = "federated_users",
+  Group = "groups",
+  Circle = "circles",
+  Guest = "guests",
+  Email = "emails",
+}
+
 /** The kind of conversation a {@link Room} represents. */
 export enum ConversationType {
   OneToOne = 1,
@@ -95,13 +105,7 @@ export type Room = {
   participantType: ParticipantType;
   attendeeId: number;
   attendeePin: string;
-  actorType:
-    | "users"
-    | "federated_users"
-    | "groups"
-    | "circles"
-    | "guests"
-    | "emails";
+  actorType: ActorType;
   actorId: string;
   permissions: number;
   attendeePermissions: number;
@@ -160,13 +164,7 @@ export type Room = {
 export type Message = {
   id: number;
   token: string;
-  actorType:
-    | "users"
-    | "federated_users"
-    | "groups"
-    | "circles"
-    | "guests"
-    | "emails";
+  actorType: ActorType;
   actorId: string;
   actorDisplayName: string;
   timestamp: number;
@@ -181,13 +179,7 @@ export type Message = {
   reactions?: number[];
   reactionsSelf?: string[];
   markdown?: boolean;
-  lastEditActorType?:
-    | "users"
-    | "federated_users"
-    | "groups"
-    | "circles"
-    | "guests"
-    | "emails";
+  lastEditActorType?: ActorType;
   lastEditActorId?: string;
   lastEditActorDisplayName?: string;
   lastEditTimestamp?: number;
@@ -197,13 +189,7 @@ export type Message = {
 /** A participant in a Talk conversation. */
 export type Participant = {
   attendeeId: number;
-  actorType:
-    | "users"
-    | "federated_users"
-    | "groups"
-    | "circles"
-    | "guests"
-    | "emails";
+  actorType: ActorType;
   actorId: string;
   displayName: string;
   participantType: ParticipantType;
@@ -222,9 +208,53 @@ export type Participant = {
 
 /** Whether a poll's results are visible before it closes. */
 export enum PollResultMode {
-  Hidden = 0,
-  Public = 1,
+  Public = 0,
+  Hidden = 1,
 }
+
+/** Whether a poll is still accepting votes. */
+export enum PollStatus {
+  Open = 0,
+  Closed = 1,
+  Draft = 2,
+}
+
+/** A single recorded vote, only present for public, closed polls. */
+export type PollVoteDetail = {
+  actorType: ActorType;
+  actorId: string;
+  actorDisplayName: string;
+  optionId: number;
+};
+
+/** The state, and (once available) the results, of a poll. */
+export type Poll = {
+  id: number;
+  question: string;
+  options: string[];
+  /**
+   * Maps `option-<index>` to vote count. Only present once you've voted on a
+   * public poll, or the poll has closed.
+   */
+  votes?: Record<string, number>;
+  actorType: ActorType;
+  actorId: string;
+  actorDisplayName: string;
+  status: PollStatus;
+  resultMode: PollResultMode;
+  /** `0` means unlimited. */
+  maxVotes: number;
+  /** Option ids the requesting participant voted for. */
+  votedSelf: number[];
+  /**
+   * The number of unique voters. Only present once you've voted on a public
+   * poll, or the poll has closed (unless you're the poll's creator or a
+   * moderator).
+   */
+  numVoters?: number;
+  /** Only present for public, closed polls. */
+  details?: PollVoteDetail[];
+};
 
 /** A file rich object parameter attached to a {@link Message}. */
 export type FileAttachment = RichObjectParam & {
@@ -350,7 +380,7 @@ export class UNBTalk {
     await this.makeRequest(
       "POST",
       `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants?format=json&includeStatus=true`,
-      JSON.stringify({ newParticipant: user, source: "users" }),
+      JSON.stringify({ newParticipant: user, source: ActorType.User }),
     );
   }
 
@@ -392,12 +422,48 @@ export class UNBTalk {
     ).ocs.data.id;
   }
 
-  /** Closes a poll, preventing further votes. */
-  async closePoll(token: string, id: number) {
-    await this.makeRequest(
-      "DELETE",
-      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${id}?format=json`,
-    );
+  /** Fetches a poll's current state and (if available) its results. */
+  async getPoll(token: string, id: number): Promise<Poll> {
+    return (
+      await (
+        await this.makeRequest(
+          "GET",
+          `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${id}?format=json`,
+        )
+      ).json()
+    ).ocs.data;
+  }
+
+  /** Votes on a poll, replacing any previous vote by the bot. */
+  async voteOnPoll(
+    token: string,
+    id: number,
+    optionIds: number[],
+  ): Promise<Poll> {
+    return (
+      await (
+        await this.makeRequest(
+          "POST",
+          `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${id}?format=json`,
+          JSON.stringify({ optionIds }),
+        )
+      ).json()
+    ).ocs.data;
+  }
+
+  /**
+   * Closes a poll, preventing further votes. Only the poll's creator or a
+   * moderator may do this.
+   */
+  async closePoll(token: string, id: number): Promise<Poll> {
+    return (
+      await (
+        await this.makeRequest(
+          "DELETE",
+          `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${id}?format=json`,
+        )
+      ).json()
+    ).ocs.data;
   }
 
   /** Extracts the file attachment from a message's rich object parameters, if any. */
